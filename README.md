@@ -34,3 +34,17 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Content repo (build-time)
+
+This portal expects a separate content repository with the structure:
+
+- `content/<task>/<YYYY-MM-DD>.md`
+
+During build, the portal clones the content repo into `content_repo/`.
+
+Required env var:
+- `PORTAL_CONTENT_REPO_URL` (e.g. `https://github.com/krownsh/openclaw-portal-content.git`)
+
+Build script:
+- `npm run build` runs `bash ./scripts/fetch-content.sh` before `next build`.
