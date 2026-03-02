@@ -48,3 +48,5 @@ Required env var:
 
 Build script:
 - `npm run build` runs `bash ./scripts/fetch-content.sh` before `next build`.
+
+<!-- redeploy: 2026-03-02 17:18:38 +0800 -->
