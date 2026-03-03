@@ -3,39 +3,50 @@ import { listTasks } from "@/lib/content";
 
 export const dynamic = "force-static";
 
+function prettyTask(task: string) {
+  return task
+    .split("-")
+    .map((s) => (s ? s[0].toUpperCase() + s.slice(1) : s))
+    .join(" ");
+}
+
 export default function HomePage() {
   const tasks = listTasks();
 
   return (
-    <main style={{ padding: 24, fontFamily: "system-ui, sans-serif" }}>
-      <h1>OpenClaw Portal</h1>
-      <p style={{ opacity: 0.8 }}>
-        集中閱讀各子任務產物（內容來源：content repo build-time clone）。
-      </p>
+    <main>
+      <h1 className="h1">任務書櫥</h1>
+      <div className="h2">
+        所有 cron 產物集中到同一個 Portal；LINE 只提醒 + 連結。
+      </div>
 
       {tasks.length === 0 ? (
-        <div style={{ marginTop: 16, padding: 12, border: "1px solid #ddd" }}>
-          <p>
-            找不到任何 tasks。請確認 build 時已 clone content repo 到
-            <code> content_repo/</code>，且存在
-            <code> content/&lt;task&gt;/YYYY-MM-DD.md</code>。
-          </p>
+        <div className="card" style={{ marginTop: 18 }}>
+          <div className="cardTitle">找不到任何內容</div>
+          <div className="cardKicker">
+            請確認 build 時已 clone content repo 到 <span className="kbd">content_repo/</span>，
+            並存在 <span className="kbd">content/&lt;task&gt;/YYYY-MM-DD.md</span>。
+          </div>
         </div>
       ) : (
-        <ul style={{ marginTop: 16, lineHeight: 1.8 }}>
+        <div className="grid">
           {tasks.map((t) => (
-            <li key={t}>
-              <Link href={`/tasks/${encodeURIComponent(t)}`}>{t}</Link>
-            </li>
+            <Link className="card" key={t} href={`/tasks/${encodeURIComponent(t)}`}>
+              <div className="cardTitle">
+                {prettyTask(t)}
+                <span className="kbd">{t}</span>
+              </div>
+              <div className="cardKicker">
+                點進去看日期列表 → 再進單篇。之後可加搜尋 / tags / RSS。
+              </div>
+            </Link>
           ))}
-        </ul>
+        </div>
       )}
 
-      <hr style={{ margin: "24px 0" }} />
-      <p style={{ fontSize: 12, opacity: 0.7 }}>
-        Tip: 你之後可以加 /search、tags、RSS、或把每個 task 的 index 做成
-        calendar view。
-      </p>
+      <div className="footerNote">
+        Tip：建議 task slug 永久化（不要改名），不然既有連結會失效。
+      </div>
     </main>
   );
 }
