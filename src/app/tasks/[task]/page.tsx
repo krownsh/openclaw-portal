@@ -53,7 +53,7 @@ export default async function TaskIndexPage({
                 <Link
                   key={`${p.date}/${p.slug}`}
                   className="card"
-                  href={`/tasks/${encodeURIComponent(task)}/${p.date}/${encodeURIComponent(p.slug)}`}
+                  href={`/tasks/${encodeURIComponent(task)}/${encodeURIComponent(p.slug)}`}
                 >
                   <div className="cardTitle">{p.title}</div>
                   <div className="cardKicker">

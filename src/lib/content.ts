@@ -121,3 +121,20 @@ export function listNestedIndex(task: TaskId): IndexedNestedDoc[] {
   }
   return out;
 }
+
+/**
+ * Resolve a nested doc by slug, scanning dates from newest to oldest.
+ * This is used for routes like /tasks/<task>/<slug> (no date in URL).
+ */
+export function resolveNestedDocBySlug(
+  task: TaskId,
+  slug: SlugId,
+): { date: DateId; doc: NestedContentDoc } {
+  for (const date of listDates(task)) {
+    const file = path.join(contentRoot(), task, date, `${slug}.md`);
+    if (!fs.existsSync(file)) continue;
+    const body = fs.readFileSync(file, "utf8");
+    return { date, doc: { task, date, slug, body, sourcePath: file } };
+  }
+  throw new Error(`Nested doc not found: ${task}/${slug}`);
+}
