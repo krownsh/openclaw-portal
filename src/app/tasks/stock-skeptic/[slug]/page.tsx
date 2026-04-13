@@ -1,25 +1,11 @@
 import Link from "next/link";
 import {
-  listNestedIndex,
   resolveNestedDocBySlug,
   type SlugId,
 } from "@/lib/content";
 import { mdToHtml } from "@/lib/markdown";
 
-export const dynamic = "force-static";
-
-export function generateStaticParams() {
-  // De-dupe by slug (if the same slug appears in multiple dates, we keep the newest).
-  const items = listNestedIndex("stock-skeptic");
-  const seen = new Set<string>();
-  const out: Array<{ slug: string }> = [];
-  for (const it of items) {
-    if (seen.has(it.slug)) continue;
-    seen.add(it.slug);
-    out.push({ slug: it.slug });
-  }
-  return out;
-}
+export const dynamic = "force-dynamic";
 
 export default async function StockSkepticSlugPage({
   params,
@@ -29,7 +15,7 @@ export default async function StockSkepticSlugPage({
   const { slug: rawSlug } = await params;
   const slug = decodeURIComponent(rawSlug);
 
-  const { date, doc } = resolveNestedDocBySlug("stock-skeptic", slug);
+  const { date, doc } = await resolveNestedDocBySlug("stock-skeptic", slug);
   const html = await mdToHtml(doc.body);
 
   return (

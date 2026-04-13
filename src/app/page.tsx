@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { listTasks } from "@/lib/content";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 function prettyTask(task: string) {
   return task
@@ -10,8 +10,8 @@ function prettyTask(task: string) {
     .join(" ");
 }
 
-export default function HomePage() {
-  const tasks = listTasks();
+export default async function HomePage() {
+  const tasks = await listTasks();
 
   return (
     <main>

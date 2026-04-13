@@ -1,140 +1,160 @@
-import fs from "node:fs";
-import path from "node:path";
+import { supabaseClient, contentTable } from "@/lib/supabase";
 
 export type TaskId = string;
-export type DateId = string; // YYYY-MM-DD
+export type DateId = string; // legacy, may still exist in old slugs/frontmatter
+export type SlugId = string;
 
 export type ContentDoc = {
   task: TaskId;
-  date: DateId;
-  body: string;
-  sourcePath: string;
-};
-
-export type SlugId = string;
-
-export type NestedContentDoc = {
-  task: TaskId;
-  date: DateId;
   slug: SlugId;
   body: string;
   sourcePath: string;
+  title?: string | null;
+};
+
+export type NestedContentDoc = {
+  task: TaskId;
+  slug: SlugId;
+  body: string;
+  sourcePath: string;
+  title?: string | null;
 };
 
 export type IndexedNestedDoc = {
   task: TaskId;
-  date: DateId;
   slug: SlugId;
   title: string;
   sourcePath: string;
 };
 
-/**
- * The content repo is cloned during build into the portal repo.
- *
- * Expected path:
- *   <portal-repo>/content_repo/content/<task>/<YYYY-MM-DD>.md
- */
-export function contentRoot(): string {
-  return path.join(process.cwd(), "content_repo", "content");
+type Row = {
+  source_path: string;
+  task: string;
+  slug: string;
+  title: string | null;
+  content_md: string;
+  deleted_at: string | null;
+};
+
+function sb() {
+  return supabaseClient();
 }
 
-export function listTasks(): TaskId[] {
-  const root = contentRoot();
-  if (!fs.existsSync(root)) return [];
-  return fs
-    .readdirSync(root, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
-    .map((d) => d.name)
-    .sort();
+function table() {
+  return contentTable();
 }
 
-export function listDates(task: TaskId): DateId[] {
-  const dir = path.join(contentRoot(), task);
-  if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir, { withFileTypes: true })
-    .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".md"))
-    .map((e) => e.name.replace(/\.md$/i, ""))
-    .sort()
-    .reverse();
-}
+export async function listTasks(): Promise<TaskId[]> {
+  const client = sb();
+  const { data, error } = await client
+    .from(table())
+    .select("task")
+    .is("deleted_at", null);
 
-export function readDoc(task: TaskId, date: DateId): ContentDoc {
-  const file = path.join(contentRoot(), task, `${date}.md`);
-  const body = fs.readFileSync(file, "utf8");
-  return { task, date, body, sourcePath: file };
+  if (error) throw new Error(error.message);
+  const tasks = Array.from(new Set((data ?? []).map((r: any) => String(r.task))));
+  tasks.sort();
+  return tasks;
 }
 
 /**
- * Optional nested docs:
- *   <content>/<task>/<date>/<slug>.md
+ * Legacy helper. We no longer drive routing off dates.
+ * For compatibility, we return a reverse-sorted list of distinct YYYY-MM-DD
+ * found in slugs (e.g. 2026-04-10) or source_path.
  */
-export function listSlugs(task: TaskId, date: DateId): SlugId[] {
-  const dir = path.join(contentRoot(), task, date);
-  if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir, { withFileTypes: true })
-    .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".md"))
-    .map((e) => e.name.replace(/\.md$/i, ""))
-    .sort()
-    .reverse();
-}
+export async function listDates(task: TaskId): Promise<DateId[]> {
+  const client = sb();
+  const { data, error } = await client
+    .from(table())
+    .select("slug,source_path")
+    .eq("task", task)
+    .is("deleted_at", null)
+    .limit(2000);
 
-export function readNestedDoc(
-  task: TaskId,
-  date: DateId,
-  slug: SlugId,
-): NestedContentDoc {
-  const file = path.join(contentRoot(), task, date, `${slug}.md`);
-  const body = fs.readFileSync(file, "utf8");
-  return { task, date, slug, body, sourcePath: file };
-}
-
-function extractTitleFromMarkdown(markdown: string): string {
-  // Prefer first ATX heading (# Title)
-  const m = markdown.match(/^#\s+(.+)\s*$/m);
-  if (m?.[1]) return m[1].trim();
-
-  // Fallback: first non-empty line (trimmed)
-  const firstNonEmpty = markdown
-    .split(/\r?\n/)
-    .map((s) => s.trim())
-    .find((s) => s.length > 0);
-  return firstNonEmpty ?? "";
-}
-
-/**
- * Build an index of all nested docs across all dates for a task.
- * Useful for tasks where the "menu" should show article titles (not dates).
- */
-export function listNestedIndex(task: TaskId): IndexedNestedDoc[] {
-  const out: IndexedNestedDoc[] = [];
-  for (const date of listDates(task)) {
-    for (const slug of listSlugs(task, date)) {
-      const file = path.join(contentRoot(), task, date, `${slug}.md`);
-      if (!fs.existsSync(file)) continue;
-      const body = fs.readFileSync(file, "utf8");
-      const title = extractTitleFromMarkdown(body) || slug;
-      out.push({ task, date, slug, title, sourcePath: file });
-    }
+  if (error) throw new Error(error.message);
+  const re = /\b\d{4}-\d{2}-\d{2}\b/;
+  const dates = new Set<string>();
+  for (const r of (data ?? []) as any[]) {
+    const m1 = String(r.slug ?? "").match(re);
+    const m2 = String(r.source_path ?? "").match(re);
+    if (m1?.[0]) dates.add(m1[0]);
+    else if (m2?.[0]) dates.add(m2[0]);
   }
-  return out;
+  return Array.from(dates).sort().reverse();
+}
+
+export async function readDoc(task: TaskId, slug: SlugId): Promise<ContentDoc> {
+  const client = sb();
+  const { data, error } = await client
+    .from(table())
+    .select("source_path,task,slug,title,content_md,deleted_at")
+    .eq("task", task)
+    .eq("slug", slug)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error(`Doc not found: ${task}/${slug}`);
+  const row = data as Row;
+  return {
+    task: row.task,
+    slug: row.slug,
+    title: row.title,
+    body: row.content_md,
+    sourcePath: row.source_path,
+  };
 }
 
 /**
- * Resolve a nested doc by slug, scanning dates from newest to oldest.
- * This is used for routes like /tasks/<task>/<slug> (no date in URL).
+ * In the DB model, "nested" docs are just docs.
+ * We keep these helpers so pages compile with minimal edits.
  */
-export function resolveNestedDocBySlug(
+export async function listSlugs(task: TaskId, _date?: DateId): Promise<SlugId[]> {
+  const client = sb();
+  const { data, error } = await client
+    .from(table())
+    .select("slug")
+    .eq("task", task)
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(2000);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r: any) => String(r.slug));
+}
+
+export async function readNestedDoc(
+  task: TaskId,
+  _date: DateId,
+  slug: SlugId,
+): Promise<NestedContentDoc> {
+  const doc = await readDoc(task, slug);
+  return { task: doc.task, slug: doc.slug, title: doc.title, body: doc.body, sourcePath: doc.sourcePath };
+}
+
+export async function listNestedIndex(task: TaskId): Promise<IndexedNestedDoc[]> {
+  const client = sb();
+  const { data, error } = await client
+    .from(table())
+    .select("task,slug,title,source_path")
+    .eq("task", task)
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(2000);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r: any) => ({
+    task: String(r.task),
+    slug: String(r.slug),
+    title: String(r.title ?? r.slug),
+    sourcePath: String(r.source_path),
+  }));
+}
+
+export async function resolveNestedDocBySlug(
   task: TaskId,
   slug: SlugId,
-): { date: DateId; doc: NestedContentDoc } {
-  for (const date of listDates(task)) {
-    const file = path.join(contentRoot(), task, date, `${slug}.md`);
-    if (!fs.existsSync(file)) continue;
-    const body = fs.readFileSync(file, "utf8");
-    return { date, doc: { task, date, slug, body, sourcePath: file } };
-  }
-  throw new Error(`Nested doc not found: ${task}/${slug}`);
+): Promise<{ date: DateId; doc: NestedContentDoc }> {
+  // "date" no longer exists. Return empty string for compatibility.
+  const doc = await readDoc(task, slug);
+  return { date: "" as DateId, doc };
 }
+

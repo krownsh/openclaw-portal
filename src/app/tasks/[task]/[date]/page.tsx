@@ -1,7 +1,5 @@
 import Link from "next/link";
 import {
-  listDates,
-  listTasks,
   listSlugs,
   readDoc,
   type DateId,
@@ -9,18 +7,7 @@ import {
 } from "@/lib/content";
 import { mdToHtml } from "@/lib/markdown";
 
-export const dynamic = "force-static";
-
-export function generateStaticParams() {
-  const tasks = listTasks();
-  const out: Array<{ task: string; date: string }> = [];
-  for (const task of tasks) {
-    for (const date of listDates(task)) {
-      out.push({ task, date });
-    }
-  }
-  return out;
-}
+export const dynamic = "force-dynamic";
 
 export default async function DocPage({
   params,
@@ -29,9 +16,10 @@ export default async function DocPage({
 }) {
   const { task: rawTask, date } = await params;
   const task = decodeURIComponent(rawTask);
-  const doc = readDoc(task, date);
+  // Legacy route: /tasks/<task>/<date> now maps to /tasks/<task>/<slug>
+  const doc = await readDoc(task, date);
   const html = await mdToHtml(doc.body);
-  const slugs = listSlugs(task, date);
+  const slugs = await listSlugs(task, date);
 
   return (
     <main>

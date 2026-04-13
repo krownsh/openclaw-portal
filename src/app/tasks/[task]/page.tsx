@@ -1,11 +1,7 @@
 import Link from "next/link";
 import { listDates, listTasks, type TaskId } from "@/lib/content";
 
-export const dynamic = "force-static";
-
-export function generateStaticParams() {
-  return listTasks().map((task) => ({ task }));
-}
+export const dynamic = "force-dynamic";
 
 export default async function TaskIndexPage({
   params,
@@ -16,7 +12,7 @@ export default async function TaskIndexPage({
   const task = decodeURIComponent(rawTask);
 
   // Default UI: date index
-  const dates = listDates(task);
+  const dates = await listDates(task);
 
   return (
     <main>
