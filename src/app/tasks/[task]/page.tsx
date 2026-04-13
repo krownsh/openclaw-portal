@@ -40,7 +40,12 @@ export default async function TaskIndexPage({
         ) : (
           <div className="grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
             {slugs.map((s) => (
-              <Link key={s} className="card" href={`/tasks/${encodeURIComponent(task)}/${encodeURIComponent(s)}`}>
+              <Link
+                key={s}
+                className="card"
+                href={`/tasks/${encodeURIComponent(task)}/${encodeURIComponent(s)}`}
+                prefetch={false}
+              >
                 <div className="cardTitle">{s}</div>
                 <div className="cardKicker">開啟單篇報告</div>
               </Link>

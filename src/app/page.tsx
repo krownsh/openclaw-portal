@@ -32,7 +32,7 @@ export default async function HomePage() {
       ) : (
         <div className="grid">
           {tasks.map((t) => (
-            <Link className="card" key={t} href={`/tasks/${encodeURIComponent(t)}`}>
+            <Link className="card" key={t} href={`/tasks/${encodeURIComponent(t)}`} prefetch={false}>
               <div className="cardTitle">
                 {prettyTask(t)}
                 <span className="kbd">{t}</span>
