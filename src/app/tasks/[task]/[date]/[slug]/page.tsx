@@ -14,5 +14,7 @@ export default async function NestedDocPage({
   const slug = decodeURIComponent(rawSlug);
 
   // Legacy: /tasks/<task>/<date>/<slug> -> /tasks/<task>/<slug>
+  // If someone used /tasks/<task>/<date> as an article slug (date-like slug),
+  // that case is now handled by /tasks/[task]/[slug].
   redirect(`/tasks/${encodeURIComponent(task)}/${encodeURIComponent(slug)}`);
 }
