@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listTasks } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 
 function prettyTask(task: string) {
   return task

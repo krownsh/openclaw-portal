@@ -8,6 +8,7 @@ import {
 import { mdToHtml } from "@/lib/markdown";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 
 export default async function DocPage({
   params,

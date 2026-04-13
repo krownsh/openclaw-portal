@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listDates, listTasks, type TaskId } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge";
 
 export default async function TaskIndexPage({
   params,
